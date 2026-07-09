@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="32" fill="#10b981"/>
+  <g transform="translate(96,96) scale(0.65)" fill="none" stroke="white" stroke-width="8" stroke-linecap="round">
+    <!-- Dumbbell left -->
+    <rect x="-60" y="-12" width="24" height="24" rx="4" fill="white"/>
+    <line x1="-36" y1="0" x2="-12" y2="0"/>
+    <rect x="-12" y="-16" width="24" height="32" rx="6" fill="white"/>
+    <line x1="12" y1="0" x2="36" y2="0"/>
+    <rect x="36" y="-12" width="24" height="24" rx="4" fill="white"/>
+  </g>
+</svg>
