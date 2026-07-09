@@ -1,22 +1,44 @@
-import * as React from "react";
-import { cn } from "@/lib/utils";
+import * as React from 'react';
+import { cn } from '@/lib/utils';
 
-export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-  ({ className, ...props }, ref) => (
+const Input = React.forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement>
+>(({ className, type, ...props }, ref) => {
+  return (
     <input
-      ref={ref}
+      type={type}
       className={cn(
-        "flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm",
-        "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
-        "disabled:cursor-not-allowed disabled:opacity-50",
-        className,
+        'flex h-9 w-full rounded-lg border border-border/60 bg-transparent px-3 py-1 text-sm',
+        'file:border-0 file:bg-transparent file:text-sm file:font-medium',
+        'placeholder:text-muted-foreground/20',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20',
+        'disabled:cursor-not-allowed disabled:opacity-20',
+        className
       )}
+      ref={ref}
       {...props}
     />
-  ),
-);
-Input.displayName = "Input";
+  );
+});
+Input.displayName = 'Input';
 
-export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
-  return <label className={cn("text-sm font-medium leading-none text-foreground", className)} {...props} />;
-}
+const Label = React.forwardRef<
+  HTMLLabelElement,
+  React.LabelHTMLAttributes<HTMLLabelElement> & { required?: boolean }
+>(({ className, children, required, ...props }, ref) => (
+  <label
+    ref={ref}
+    className={cn(
+      'text-xs font-medium text-foreground/60',
+      required && "after:content-['*'] after:ml-0.5 after:text-destructive/60",
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </label>
+));
+Label.displayName = 'Label';
+
+export { Input, Label };
