@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-09T21:24:53.496Z",
+  "updatedAt": "2026-07-09T22:22:03.255Z",
   "framework": "Next.js",
   "dbModels": [],
   "apiRoutes": [],
@@ -48,5 +48,5 @@
     "tailwindcss",
     "typescript"
   ],
-  "fileCount": 41
+  "fileCount": 40
 }

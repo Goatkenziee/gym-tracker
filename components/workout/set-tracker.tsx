@@ -1,113 +1,91 @@
 'use client';
 
-import { SetRecord, ExerciseEntry } from '@/types/workout';
+import { useWorkoutStore } from '@/lib/workout-store';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Plus, X, Check, Dumbbell } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { ExerciseEntry } from '@/types/workout';
+import { Plus, X, Check } from 'lucide-react';
 
-interface Props {
+interface SetTrackerProps {
+  workoutId: string;
   entry: ExerciseEntry;
-  onUpdateSets: (sets: SetRecord[]) => void;
-  onRemove: () => void;
 }
 
-function generateId() {
-  return Math.random().toString(36).substring(2, 10);
-}
-
-export function SetTracker({ entry, onUpdateSets, onRemove }: Props) {
-  const addSet = () => {
-    const lastSet = entry.sets[entry.sets.length - 1];
-    const newSet: SetRecord = {
-      id: generateId(),
-      reps: lastSet?.reps ?? 10,
-      weightKg: lastSet?.weightKg ?? 0,
-      completed: false,
-    };
-    onUpdateSets([...entry.sets, newSet]);
-  };
-
-  const updateSet = (id: string, updates: Partial<SetRecord>) => {
-    onUpdateSets(entry.sets.map(s => (s.id === id ? { ...s, ...updates } : s)));
-  };
-
-  const removeSet = (id: string) => {
-    onUpdateSets(entry.sets.filter(s => s.id !== id));
-  };
-
-  const toggleComplete = (id: string) => {
-    const set = entry.sets.find(s => s.id === id);
-    if (set) updateSet(id, { completed: !set.completed });
-  };
+export function SetTracker({ workoutId, entry }: SetTrackerProps) {
+  const { addSet, removeSet, updateSet, toggleSet } = useWorkoutStore();
 
   return (
-    <Card className="border-l-4 border-l-primary/40">
-      <CardHeader className="pb-2 flex-row items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Dumbbell className="h-4 w-4 text-primary" />
-          <CardTitle className="text-base">{entry.exerciseName}</CardTitle>
-        </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={onRemove}>
-          <X className="h-4 w-4" />
-        </Button>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {/* Header row */}
-        <div className="grid grid-cols-[auto_1fr_1fr_auto] gap-2 text-xs font-medium text-muted-foreground px-1">
-          <span className="w-6 text-center">#</span>
-          <span>Weight (kg)</span>
-          <span>Reps</span>
-          <span className="w-8" />
-        </div>
+    <div>
+      {/* Header */}
+      <div className="grid grid-cols-[24px_1fr_1fr_28px] gap-2 mb-2 text-[10px] font-medium text-muted-foreground/30 uppercase tracking-wider">
+        <span />
+        <span>Weight</span>
+        <span>Reps</span>
+        <span />
+      </div>
 
-        {entry.sets.map((set, i) => (
-          <div key={set.id} className={`grid grid-cols-[auto_1fr_1fr_auto] gap-2 items-center rounded-md p-1.5 transition-colors ${set.completed ? 'bg-primary/5' : ''}`}>
-            <span className="w-6 text-center text-sm font-mono text-muted-foreground">{i + 1}</span>
-            <Input
+      {/* Sets */}
+      <div className="space-y-1">
+        {entry.sets.map((set, idx) => (
+          <div
+            key={set.id}
+            className={cn(
+              'grid grid-cols-[24px_1fr_1fr_28px] gap-2 items-center rounded-lg px-2 py-1.5 transition-all',
+              set.completed ? 'opacity-40' : '',
+            )}
+          >
+            {/* Set number */}
+            <button
+              onClick={() => toggleSet(workoutId, entry.exerciseId, set.id)}
+              className={cn(
+                'h-6 w-6 rounded-md flex items-center justify-center text-[10px] font-medium transition-all',
+                set.completed
+                  ? 'bg-success/20 text-success'
+                  : 'bg-muted/60 text-muted-foreground/30 hover:bg-muted',
+              )}
+            >
+              {set.completed ? <Check className="h-3 w-3" /> : idx + 1}
+            </button>
+
+            {/* Weight */}
+            <input
               type="number"
-              min={0}
-              step={0.5}
               value={set.weightKg || ''}
-              onChange={e => updateSet(set.id, { weightKg: parseFloat(e.target.value) || 0 })}
-              className="h-8 text-sm"
+              onChange={e => updateSet(workoutId, entry.exerciseId, set.id, { weightKg: parseFloat(e.target.value) || 0 })}
               placeholder="kg"
+              className="w-full h-7 px-2 rounded-md bg-muted/40 text-xs text-foreground/60 placeholder:text-muted-foreground/15 border border-border/30 focus:outline-none focus:border-foreground/30 transition-colors"
             />
-            <Input
+
+            {/* Reps */}
+            <input
               type="number"
-              min={1}
-              step={1}
               value={set.reps || ''}
-              onChange={e => updateSet(set.id, { reps: parseInt(e.target.value) || 0 })}
-              className="h-8 text-sm"
+              onChange={e => updateSet(workoutId, entry.exerciseId, set.id, { reps: parseInt(e.target.value) || 0 })}
               placeholder="reps"
+              className="w-full h-7 px-2 rounded-md bg-muted/40 text-xs text-foreground/60 placeholder:text-muted-foreground/15 border border-border/30 focus:outline-none focus:border-foreground/30 transition-colors"
             />
-            <div className="flex gap-1">
-              <Button
-                variant={set.completed ? 'default' : 'outline'}
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => toggleComplete(set.id)}
-              >
-                <Check className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                onClick={() => removeSet(set.id)}
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+
+            {/* Remove */}
+            <button
+              onClick={() => removeSet(workoutId, entry.exerciseId, set.id)}
+              className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground/20 hover:text-destructive hover:bg-destructive/10 transition-all"
+            >
+              <X className="h-3 w-3" />
+            </button>
           </div>
         ))}
+      </div>
 
-        <Button variant="outline" size="sm" className="w-full gap-1 mt-1" onClick={addSet}>
-          <Plus className="h-3.5 w-3.5" />
-          Add Set
-        </Button>
-      </CardContent>
-    </Card>
+      {/* Add set */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => addSet(workoutId, entry.exerciseId)}
+        className="mt-2 text-muted-foreground/30 hover:text-foreground/60"
+      >
+        <Plus className="h-3 w-3" />
+        Add set
+      </Button>
+    </div>
   );
 }

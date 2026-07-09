@@ -1,93 +1,84 @@
 'use client';
 
 import { useState } from 'react';
-import { Exercise, ExerciseCategory } from '@/types/workout';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { useWorkoutStore } from '@/lib/workout-store';
 import { Badge } from '@/components/ui/badge';
-import { Search, Dumbbell } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { Exercise } from '@/types/workout';
 
-const CATEGORIES: { value: ExerciseCategory; label: string }[] = [
-  { value: 'chest', label: 'Chest' },
-  { value: 'back', label: 'Back' },
-  { value: 'legs', label: 'Legs' },
-  { value: 'shoulders', label: 'Shoulders' },
-  { value: 'arms', label: 'Arms' },
-  { value: 'core', label: 'Core' },
-  { value: 'cardio', label: 'Cardio' },
-  { value: 'full-body', label: 'Full Body' },
-];
-
-interface Props {
-  exercises: Exercise[];
-  onSelect: (exercise: Exercise) => void;
-  selectedIds: string[];
+interface ExercisePickerProps {
+  selected: Exercise[];
+  onToggle: (exercise: Exercise) => void;
 }
 
-export function ExercisePicker({ exercises, onSelect, selectedIds }: Props) {
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<ExerciseCategory | 'all'>('all');
+const CATEGORIES = ['All', 'Push', 'Pull', 'Legs', 'Core'] as const;
 
-  const filtered = exercises.filter(e => {
-    const matchesSearch = e.name.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = category === 'all' || e.category === category;
-    return matchesSearch && matchesCategory;
-  });
+export function ExercisePicker({ selected, onToggle }: ExercisePickerProps) {
+  const { exercises } = useWorkoutStore();
+  const [category, setCategory] = useState<string>('All');
+
+  const filtered = category === 'All'
+    ? exercises
+    : exercises.filter(e => e.category === category);
 
   return (
-    <div className="space-y-3">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search exercises..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      <div className="flex flex-wrap gap-1.5">
-        <Badge
-          tone={category === 'all' ? 'default' : 'outline'}
-          className="cursor-pointer"
-          onClick={() => setCategory('all')}
-        >
-          All
-        </Badge>
-        {CATEGORIES.map(c => (
-          <Badge
-            key={c.value}
-            tone={category === c.value ? 'default' : 'outline'}
-            className="cursor-pointer"
-            onClick={() => setCategory(c.value)}
+    <div>
+      {/* Category tabs */}
+      <div className="flex gap-1 mb-3 overflow-x-auto pb-1 scrollbar-none">
+        {CATEGORIES.map(cat => (
+          <button
+            key={cat}
+            onClick={() => setCategory(cat)}
+            className={cn(
+              'shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all',
+              category === cat
+                ? 'bg-foreground/10 text-foreground/80'
+                : 'text-muted-foreground/30 hover:text-muted-foreground/50 hover:bg-muted/40',
+            )}
           >
-            {c.label}
-          </Badge>
+            {cat}
+          </button>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-        {filtered.map(ex => {
-          const selected = selectedIds.includes(ex.id);
+      {/* Exercise list */}
+      <div className="space-y-0.5">
+        {filtered.map(exercise => {
+          const isSelected = selected.some(s => s.id === exercise.id);
           return (
-            <Button
-              key={ex.id}
-              variant={selected ? 'default' : 'outline'}
-              size="sm"
-              className="justify-start gap-2 h-auto py-2"
-              onClick={() => onSelect(ex)}
+            <button
+              key={exercise.id}
+              onClick={() => onToggle(exercise)}
+              className={cn(
+                'w-full flex items-center justify-between rounded-xl px-4 py-3 text-left transition-all border',
+                isSelected
+                  ? 'bg-foreground/8 border-foreground/20'
+                  : 'bg-card border-border/60 hover:border-foreground/15',
+              )}
             >
-              <Dumbbell className="h-3.5 w-3.5 shrink-0" />
-              <span className="text-left text-sm">{ex.name}</span>
-            </Button>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-foreground/80 truncate">{exercise.name}</p>
+                <p className="text-[11px] text-muted-foreground/30 mt-0.5">{exercise.category}</p>
+              </div>
+              <div className={cn(
+                'h-4 w-4 rounded border-2 flex items-center justify-center transition-all shrink-0 ml-3',
+                isSelected
+                  ? 'bg-foreground border-foreground'
+                  : 'border-border/60',
+              )}>
+                {isSelected && (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M2 5L4 7L8 3" stroke="hsl(var(--background))" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
+            </button>
           );
         })}
       </div>
 
       {filtered.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-4">
-          No exercises found. Try a different search.
-        </p>
+        <p className="text-xs text-muted-foreground/20 text-center py-8">No exercises in this category.</p>
       )}
     </div>
   );

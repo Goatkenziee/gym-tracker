@@ -1,10 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Workout, WorkoutTemplate, DEFAULT_EXERCISES, Exercise } from '@/types/workout';
+import { Workout, WorkoutTemplate, DEFAULT_EXERCISES, Exercise, ExerciseEntry, SetRecord } from '@/types/workout';
 
 const STORAGE_KEY = 'gym-tracker-workouts';
 const TEMPLATES_KEY = 'gym-tracker-templates';
+
+let setIdCounter = Date.now();
+function genSetId() { return `set_${++setIdCounter}`; }
+function genId() { return `w_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; }
 
 function loadFromStorage<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -66,6 +70,96 @@ export function useWorkoutStore() {
     saveTemplates(templates.filter(t => t.id !== id));
   }, [templates, saveTemplates]);
 
+  // --- Set-level operations ---
+
+  const addSet = useCallback((workoutId: string, exerciseId: string) => {
+    saveWorkouts(workouts.map(w => {
+      if (w.id !== workoutId) return w;
+      return {
+        ...w,
+        exercises: w.exercises.map(e => {
+          if (e.exerciseId !== exerciseId) return e;
+          return {
+            ...e,
+            sets: [...e.sets, { id: genSetId(), reps: 0, weightKg: 0, completed: false }],
+          };
+        }),
+      };
+    }));
+  }, [workouts, saveWorkouts]);
+
+  const removeSet = useCallback((workoutId: string, exerciseId: string, setId: string) => {
+    saveWorkouts(workouts.map(w => {
+      if (w.id !== workoutId) return w;
+      return {
+        ...w,
+        exercises: w.exercises.map(e => {
+          if (e.exerciseId !== exerciseId) return e;
+          return { ...e, sets: e.sets.filter(s => s.id !== setId) };
+        }),
+      };
+    }));
+  }, [workouts, saveWorkouts]);
+
+  const updateSet = useCallback((workoutId: string, exerciseId: string, setId: string, updates: Partial<SetRecord>) => {
+    saveWorkouts(workouts.map(w => {
+      if (w.id !== workoutId) return w;
+      return {
+        ...w,
+        exercises: w.exercises.map(e => {
+          if (e.exerciseId !== exerciseId) return e;
+          return {
+            ...e,
+            sets: e.sets.map(s => s.id === setId ? { ...s, ...updates } : s),
+          };
+        }),
+      };
+    }));
+  }, [workouts, saveWorkouts]);
+
+  const toggleSet = useCallback((workoutId: string, exerciseId: string, setId: string) => {
+    saveWorkouts(workouts.map(w => {
+      if (w.id !== workoutId) return w;
+      return {
+        ...w,
+        exercises: w.exercises.map(e => {
+          if (e.exerciseId !== exerciseId) return e;
+          return {
+            ...e,
+            sets: e.sets.map(s => s.id === setId ? { ...s, completed: !s.completed } : s),
+          };
+        }),
+      };
+    }));
+  }, [workouts, saveWorkouts]);
+
+  // --- Workout creation ---
+
+  const createWorkout = useCallback((name: string, selectedExercises: Exercise[]): Workout => {
+    const now = new Date().toISOString();
+    const exercises: ExerciseEntry[] = selectedExercises.map(ex => ({
+      id: `entry_${genId()}`,
+      exerciseId: ex.id,
+      exerciseName: ex.name,
+      category: ex.category,
+      sets: [{ id: genSetId(), reps: 0, weightKg: 0, completed: false }],
+    }));
+    const workout: Workout = {
+      id: genId(),
+      name,
+      date: now.slice(0, 10),
+      startTime: now,
+      exercises,
+      completed: false,
+    };
+    addWorkout(workout);
+    return workout;
+  }, [addWorkout]);
+
+  const completeWorkout = useCallback((id: string) => {
+    updateWorkout(id, { completed: true, endTime: new Date().toISOString() });
+  }, [updateWorkout]);
+
   return {
     workouts,
     templates,
@@ -77,5 +171,11 @@ export function useWorkoutStore() {
     getWorkout,
     addTemplate,
     deleteTemplate,
+    addSet,
+    removeSet,
+    updateSet,
+    toggleSet,
+    createWorkout,
+    completeWorkout,
   };
 }

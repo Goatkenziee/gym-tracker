@@ -1,15 +1,26 @@
-import * as React from "react";
-import { cn } from "@/lib/utils";
+import * as React from 'react';
+import { cn } from '@/lib/utils';
 
-type Tone = "default" | "success" | "warning" | "destructive" | "outline";
-const tones: Record<Tone, string> = {
-  default: "bg-muted text-muted-foreground",
-  success: "bg-success/12 text-success",
-  warning: "bg-warning/14 text-warning",
-  destructive: "bg-destructive/12 text-destructive",
-  outline: "border border-border text-foreground",
-};
-
-export function Badge({ tone = "default", className, ...props }: React.HTMLAttributes<HTMLSpanElement> & { tone?: Tone }) {
-  return <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium", tones[tone], className)} {...props} />;
+interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+  tone?: 'default' | 'outline' | 'success' | 'warning';
 }
+
+const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
+  ({ className, tone = 'default', ...props }, ref) => (
+    <span
+      ref={ref}
+      className={cn(
+        'inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium leading-4',
+        tone === 'default' && 'bg-foreground/8 text-foreground/60',
+        tone === 'outline' && 'border border-border/60 text-foreground/50',
+        tone === 'success' && 'bg-success/10 text-success',
+        tone === 'warning' && 'bg-warning/10 text-warning',
+        className,
+      )}
+      {...props}
+    />
+  ),
+);
+Badge.displayName = 'Badge';
+
+export { Badge };

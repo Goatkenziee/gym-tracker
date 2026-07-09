@@ -1,22 +1,36 @@
-import * as React from "react";
-import { cn } from "@/lib/utils";
+import * as React from 'react';
+import { cn } from '@/lib/utils';
 
-export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   ({ className, ...props }, ref) => (
     <input
       ref={ref}
       className={cn(
-        "flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm",
-        "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
-        "disabled:cursor-not-allowed disabled:opacity-50",
+        'w-full bg-transparent text-sm text-foreground/80 placeholder:text-muted-foreground/20',
+        'border border-border/60 rounded-lg px-3 h-9',
+        'focus:outline-none focus:border-foreground/30 focus:ring-0',
+        'transition-colors',
+        'disabled:opacity-20 disabled:pointer-events-none',
         className,
       )}
       {...props}
     />
   ),
 );
-Input.displayName = "Input";
+Input.displayName = 'Input';
 
-export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
-  return <label className={cn("text-sm font-medium leading-none text-foreground", className)} {...props} />;
-}
+const Label = React.forwardRef<HTMLLabelElement, React.LabelHTMLAttributes<HTMLLabelElement>>(
+  ({ className, ...props }, ref) => (
+    <label
+      ref={ref}
+      className={cn(
+        'text-xs font-medium text-foreground/60',
+        className,
+      )}
+      {...props}
+    />
+  ),
+);
+Label.displayName = 'Label';
+
+export { Input, Label };

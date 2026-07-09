@@ -2,120 +2,177 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useWorkoutStore } from '@/lib/workout-store';
-import { SetTracker } from '@/components/workout/set-tracker';
-import { Button } from '@/components/ui/button';
 import { Container } from '@/components/layout/container';
 import { PageHeader } from '@/components/layout/page-header';
-import { EmptyState } from '@/components/states/empty-state';
-import { CheckCircle, Timer, Dumbbell } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { SetRecord } from '@/types/workout';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { SetTracker } from '@/components/workout/set-tracker';
+import { cn } from '@/lib/utils';
+import { Check, Timer, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function WorkoutDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { getWorkout, updateWorkout, exercises } = useWorkoutStore();
-  const workout = getWorkout(params.id as string);
-  const [elapsed, setElapsed] = useState('0:00');
+  const { workouts, completeWorkout, loaded } = useWorkoutStore();
+  const [mounted, setMounted] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [seconds, setSeconds] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  useEffect(() => { setMounted(true); }, []);
+
+  const workout = workouts.find(w => w.id === params.id);
+
+  // Timer
   useEffect(() => {
-    if (!workout?.startTime) return;
-    const interval = setInterval(() => {
-      const start = new Date(workout.startTime).getTime();
-      const diff = Math.floor((Date.now() - start) / 1000);
-      const mins = Math.floor(diff / 60);
-      const secs = diff % 60;
-      setElapsed(`${mins}:${secs.toString().padStart(2, '0')}`);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [workout?.startTime]);
+    if (workout && !workout.completed) {
+      timerRef.current = setInterval(() => setSeconds(s => s + 1), 1000);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [workout?.completed]);
 
-  if (!workout) {
+  if (!mounted || !loaded) {
     return (
-      <Container>
-        <EmptyState
-          icon={<Dumbbell className="h-12 w-12" />}
-          title="Workout not found"
-          description="This workout doesn't exist or was deleted."
-          action={<Button onClick={() => router.push('/')}>Back to Dashboard</Button>}
-        />
-      </Container>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <span className="h-5 w-5 rounded-full border-2 border-foreground/10 border-t-foreground/60 animate-spin" />
+        </div>
+      </div>
     );
   }
 
-  const updateSets = (entryId: string, sets: SetRecord[]) => {
-    updateWorkout(workout.id, {
-      exercises: workout.exercises.map(e => (e.id === entryId ? { ...e, sets } : e)),
-    });
+  if (!workout) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-xs text-muted-foreground/20">Workout not found</p>
+      </div>
+    );
+  }
+
+  const totalSets = workout.exercises.reduce((s, e) => s + e.sets.length, 0);
+  const completedSets = workout.exercises.reduce((s, e) => s + e.sets.filter(set => set.completed).length, 0);
+  const allDone = totalSets > 0 && completedSets === totalSets;
+
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
-  const removeEntry = (entryId: string) => {
-    updateWorkout(workout.id, {
-      exercises: workout.exercises.filter(e => e.id !== entryId),
-    });
-  };
-
-  const completeWorkout = () => {
-    updateWorkout(workout.id, {
-      completed: true,
-      endTime: new Date().toISOString(),
-    });
+  const handleComplete = () => {
+    completeWorkout(workout.id);
     router.push('/');
   };
 
-  const totalSets = workout.exercises.reduce((sum, e) => sum + e.sets.length, 0);
-  const completedSets = workout.exercises.reduce((sum, e) => sum + e.sets.filter(s => s.completed).length, 0);
-
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-32">
       <Container>
         <PageHeader
           title={workout.name}
+          description={`${workout.exercises.length} exercises`}
           backHref="/"
         />
 
-        {/* Stats bar */}
-        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2 mb-4 p-3 bg-muted/30 rounded-lg">
-          <div className="flex items-center gap-1.5">
-            <Timer className="h-4 w-4" />
-            <span>{elapsed}</span>
+        {/* Timer + progress bar */}
+        <div className="flex items-center justify-between mt-2 mb-6">
+          <div className="flex items-center gap-2 text-muted-foreground/20">
+            <Timer className="h-3.5 w-3.5" />
+            <span className="text-sm font-mono tabular-nums text-foreground/40">{formatTime(seconds)}</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Dumbbell className="h-4 w-4" />
-            <span>{completedSets}/{totalSets} sets</span>
+          <div className="flex items-center gap-2">
+            <div className="h-1 w-24 rounded-full bg-muted/60 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-foreground/40 transition-all"
+                style={{ width: totalSets > 0 ? `${(completedSets / totalSets) * 100}%` : '0%' }}
+              />
+            </div>
+            <span className="text-[10px] text-muted-foreground/15 font-medium">{completedSets}/{totalSets}</span>
           </div>
         </div>
 
-        <div className="space-y-3">
-          {workout.exercises.map(entry => (
-            <SetTracker
-              key={entry.id}
-              entry={entry}
-              onUpdateSets={sets => updateSets(entry.id, sets)}
-              onRemove={() => removeEntry(entry.id)}
-            />
-          ))}
+        {/* Exercises */}
+        <div className="space-y-2">
+          {workout.exercises.map((entry, idx) => {
+            const isExpanded = expanded === entry.exerciseId;
+            const entryDone = entry.sets.filter(s => s.completed).length;
+            const entryTotal = entry.sets.length;
+            const entryPct = entryTotal > 0 ? Math.round((entryDone / entryTotal) * 100) : 0;
+
+            return (
+              <div
+                key={entry.exerciseId}
+                className="rounded-xl border border-border/60 bg-card overflow-hidden"
+              >
+                {/* Exercise header — clickable to expand */}
+                <button
+                  onClick={() => setExpanded(isExpanded ? null : entry.exerciseId)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-left"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={cn(
+                      'h-6 w-6 rounded-md flex items-center justify-center text-[10px] font-medium shrink-0',
+                      entryDone === entryTotal && entryTotal > 0
+                        ? 'bg-success/15 text-success'
+                        : 'bg-muted/60 text-muted-foreground/20',
+                    )}>
+                      {entryDone === entryTotal && entryTotal > 0 ? (
+                        <Check className="h-3 w-3" />
+                      ) : (
+                        idx + 1
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground/80 truncate">{entry.exerciseName}</p>
+                      <p className="text-[10px] text-muted-foreground/15">
+                        {entryDone}/{entryTotal} sets · {entryPct}%
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {entryDone === entryTotal && entryTotal > 0 && (
+                      <Badge tone="success" className="text-[10px]">Done</Badge>
+                    )}
+                    {isExpanded ? (
+                      <ChevronUp className="h-3.5 w-3.5 text-muted-foreground/15" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/15" />
+                    )}
+                  </div>
+                </button>
+
+                {/* Expandable set tracker */}
+                {isExpanded && (
+                  <div className="border-t border-border/40 px-4 py-3">
+                    <SetTracker
+                      workoutId={workout.id}
+                      entry={entry}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
-        {!workout.completed && (
-          <Button
-            className="w-full mt-6 gap-2 h-12 text-base"
-            onClick={completeWorkout}
-          >
-            <CheckCircle className="h-5 w-5" />
-            Complete Workout
-          </Button>
-        )}
-
-        {workout.completed && (
-          <div className="text-center mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
-            <CheckCircle className="h-6 w-6 text-primary mx-auto mb-1" />
-            <p className="font-medium text-primary">Workout Complete!</p>
-            <p className="text-sm text-muted-foreground">
-              {completedSets} sets across {workout.exercises.length} exercises
-            </p>
+        {/* Complete workout button */}
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/95 to-transparent pt-8">
+          <div className="max-w-lg mx-auto">
+            <Button
+              onClick={handleComplete}
+              disabled={!allDone}
+              className={cn(
+                'w-full h-12 gap-2 rounded-xl text-sm font-semibold transition-all',
+                allDone
+                  ? 'bg-foreground text-background hover:bg-foreground/90'
+                  : 'bg-muted/60 text-muted-foreground/20 cursor-not-allowed',
+              )}
+            >
+              <Check className="h-4 w-4" />
+              {allDone ? 'Complete Workout' : `${completedSets}/${totalSets} sets done`}
+            </Button>
           </div>
-        )}
+        </div>
       </Container>
     </div>
   );
